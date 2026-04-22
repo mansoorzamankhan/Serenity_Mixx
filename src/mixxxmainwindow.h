@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QPushButton>
 #include <QString>
 #include <memory>
 
@@ -107,6 +108,7 @@ class MixxxMainWindow : public QMainWindow {
   private:
     void initializeWindow();
     void checkDirectRendering();
+    void attachSerenityCloseButton();
 
     /// Load skin to a QWidget that we set as the central widget.
     bool loadConfiguredSkin();
@@ -162,4 +164,5 @@ class MixxxMainWindow : public QMainWindow {
     mixxx::preferences::ScreenSaver m_inhibitScreensaver;
 
     QSet<ControlObject*> m_skinCreatedControls;
+    QPushButton* m_pSerenityCloseBtn{nullptr};
 };

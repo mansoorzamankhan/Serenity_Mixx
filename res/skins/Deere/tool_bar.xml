@@ -431,31 +431,6 @@
             <BackPath scalemode="STRETCH_ASPECT">image/mixxx_logo.svg</BackPath>
           </WidgetGroup>
 
-          <!-- Serenity: close button — returns to Serenity_App launcher -->
-          <WidgetGroup>
-            <SizePolicy>min,min</SizePolicy>
-            <Layout>horizontal</Layout>
-            <Children>
-              <WidgetGroup><Size>6f,1min</Size></WidgetGroup>
-              <PushButton>
-                <ObjectName>SerenityCloseButton</ObjectName>
-                <Tooltip>Close Mixxx and return to Serenity</Tooltip>
-                <MinimumSize>60,22</MinimumSize>
-                <MaximumSize>60,22</MaximumSize>
-                <SizePolicy>f,f</SizePolicy>
-                <NumberStates>1</NumberStates>
-                <State>
-                  <Number>0</Number>
-                  <Text>X BACK</Text>
-                </State>
-                <Connection>
-                  <ConfigKey>[App],quit</ConfigKey>
-                </Connection>
-              </PushButton>
-              <WidgetGroup><Size>6f,1min</Size></WidgetGroup>
-            </Children>
-          </WidgetGroup>
-
           <WidgetGroup>
             <SizePolicy>min,min</SizePolicy>
             <Layout>horizontal</Layout>

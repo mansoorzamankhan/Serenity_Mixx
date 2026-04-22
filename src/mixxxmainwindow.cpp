@@ -2,6 +2,7 @@
 
 #include <QCheckBox>
 #include <QCloseEvent>
+#include <QPushButton>
 #include <QDebug>
 #include <QFileDialog>
 #include <QOpenGLContext>
@@ -35,7 +36,6 @@
 #include "broadcast/broadcastmanager.h"
 #endif
 #include "control/controlindicatortimer.h"
-#include "control/controlpushbutton.h"
 #include "library/library.h"
 #include "library/library_decl.h"
 #include "library/library_prefs.h"
@@ -412,6 +412,7 @@ void MixxxMainWindow::initialize() {
     // million different variables the first waveform may be horribly
     // corrupted. See bug 521509 -- bkgood ?? -- vrince
     setCentralWidget(m_pCentralWidget);
+    attachSerenityCloseButton();
 
 #ifndef __APPLE__
     // Ask for permission to auto-hide the menu bar if applicable.
@@ -591,15 +592,38 @@ void MixxxMainWindow::initializeWindow() {
 
     setWindowIcon(QIcon(MIXXX_ICON_PATH));
     slotUpdateWindowTitle(TrackPointer());
+}
 
-    // Serenity: skin-accessible quit control — lets the toolbar close button
-    // call close() on this window via [App],quit ConfigKey.
-    auto* pQuit = new ControlPushButton(ConfigKey(QStringLiteral("[App]"), QStringLiteral("quit")), this);
-    connect(pQuit, &ControlObject::valueChanged, this, [this](double v) {
-        if (v > 0.0) {
-            close();
-        }
-    });
+void MixxxMainWindow::attachSerenityCloseButton() {
+    QWidget* cw = centralWidget();
+    if (!cw) {
+        return;
+    }
+    // Remove previous button if skin was reloaded
+    delete m_pSerenityCloseBtn;
+
+    m_pSerenityCloseBtn = new QPushButton(QStringLiteral("X  BACK"), cw);
+    m_pSerenityCloseBtn->setFixedSize(90, 32);
+    m_pSerenityCloseBtn->setStyleSheet(
+            QStringLiteral("QPushButton {"
+                           "  background-color: #CC0000;"
+                           "  color: #FFFFFF;"
+                           "  font-weight: bold;"
+                           "  font-size: 13px;"
+                           "  border: none;"
+                           "  border-radius: 4px;"
+                           "}"
+                           "QPushButton:hover { background-color: #FF2200; }"
+                           "QPushButton:pressed { background-color: #990000; }"));
+    m_pSerenityCloseBtn->setCursor(Qt::PointingHandCursor);
+    connect(m_pSerenityCloseBtn, &QPushButton::clicked, this, &MixxxMainWindow::close);
+
+    // Position top-right corner; stays updated via eventFilter on cw
+    m_pSerenityCloseBtn->move(cw->width() - m_pSerenityCloseBtn->width() - 10, 10);
+    m_pSerenityCloseBtn->raise();
+    m_pSerenityCloseBtn->show();
+
+    cw->installEventFilter(this);
 }
 
 #ifndef __APPLE__
@@ -1392,6 +1416,7 @@ void MixxxMainWindow::rebootMixxxView() {
     m_pMenuBar->setStyleSheet(m_pCentralWidget->styleSheet());
 
     setCentralWidget(m_pCentralWidget);
+    attachSerenityCloseButton();
 #ifdef __LINUX__
     // don't adjustSize() on Linux as this wouldn't use the entire available area
     // to paint the new skin with X11
@@ -1445,6 +1470,15 @@ void MixxxMainWindow::tryParseAndSetDefaultStyleSheet() {
 
 /// Catch ToolTip and WindowStateChange events
 bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
+    // Keep the Serenity close button pinned to the top-right of the skin widget
+    if (m_pSerenityCloseBtn && obj == centralWidget() &&
+            event->type() == QEvent::Resize) {
+        QWidget* cw = centralWidget();
+        m_pSerenityCloseBtn->move(
+                cw->width() - m_pSerenityCloseBtn->width() - 10, 10);
+        m_pSerenityCloseBtn->raise();
+    }
+
     if (event->type() == QEvent::ToolTip) {
         // Always show tooltips if Ctrl is held down
         if (QApplication::keyboardModifiers().testFlag(Qt::ControlModifier)) {
