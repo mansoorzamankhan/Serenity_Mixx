@@ -1,0 +1,129 @@
+# ARM64 build image for Raspberry Pi (Ubuntu 24.04)
+FROM --platform=linux/arm64 ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+RUN apt-get update
+
+# Build tools
+RUN apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    pkg-config \
+    ninja-build
+
+# Qt6 core
+RUN apt-get install -y \
+    qt6-base-dev \
+    qt6-base-private-dev \
+    qt6-declarative-dev \
+    qt6-declarative-private-dev \
+    qt6-multimedia-dev \
+    qt6-tools-dev \
+    qt6-tools-dev-tools \
+    qt6-shader-baker \
+    qt6-shadertools-dev \
+    libqt6core5compat6-dev \
+    libqt6opengl6-dev \
+    libqt6svg6-dev
+
+# Qt6 SQL + keychain (optional)
+RUN apt-get install -y libqt6sql6-sqlite || true
+RUN apt-get install -y qtkeychain-qt6-dev || true
+
+# QML modules (optional — not all mirrors have all of these)
+RUN apt-get install -y \
+    qt6-declarative-dev \
+    qml6-module-qtmultimedia \
+    qml6-module-qtqml-workerscript \
+    qml6-module-qtquick-controls \
+    qml6-module-qtquick-layouts \
+    qml6-module-qtquick-shapes \
+    qml6-module-qtquick-templates \
+    qml6-module-qtquick-window \
+    qml6-module-qtquick-dialogs \
+    qml6-module-qt-labs-qmlmodels \
+    qml6-module-qt-labs-folderlistmodel \
+    || true
+RUN apt-get install -y qml6-module-qt5compat-graphicaleffects || true
+
+# Audio
+RUN apt-get install -y \
+    libjack-dev \
+    portaudio19-dev \
+    libasound2-dev \
+    libsndfile1-dev \
+    libsoundtouch-dev
+RUN apt-get install -y libportmidi-dev || true
+RUN apt-get install -y libshout-idjc-dev || true
+
+# Codecs / formats
+RUN apt-get install -y \
+    libid3tag0-dev \
+    libmad0-dev \
+    libogg-dev \
+    libvorbis-dev \
+    libavformat-dev \
+    libopusfile-dev \
+    libtag1-dev \
+    libmodplug-dev \
+    libmp3lame-dev \
+    libwavpack-dev
+RUN apt-get install -y libfaad-dev || true
+
+# DSP / analysis
+RUN apt-get install -y \
+    librubberband-dev \
+    libchromaprint-dev \
+    libebur128-dev \
+    libfftw3-dev
+
+# HID / hardware
+RUN apt-get install -y \
+    libusb-1.0-0-dev \
+    libhidapi-dev \
+    libudev-dev
+RUN apt-get install -y libupower-glib-dev || true
+
+# LV2 / plugins
+RUN apt-get install -y liblilv-dev
+
+# Misc
+RUN apt-get install -y \
+    libssl-dev \
+    libprotobuf-dev \
+    protobuf-compiler \
+    libsqlite3-dev
+RUN apt-get install -y libglu1-mesa-dev || true
+# Microsoft GSL not packaged for Ubuntu 24 ARM64 — install header-only lib from source
+RUN git clone --depth=1 https://github.com/microsoft/GSL.git /tmp/gsl \
+    && cmake -S /tmp/gsl -B /tmp/gsl/build -DGSL_TEST=OFF \
+    && cmake --install /tmp/gsl/build \
+    && rm -rf /tmp/gsl
+
+# Testing
+RUN apt-get install -y libgtest-dev
+RUN apt-get install -y libgmock-dev || true
+
+RUN rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . .
+
+RUN cmake -B /build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/install \
+    -G Ninja \
+    -DBUILD_TESTING=OFF \
+    -DCMAKE_NO_SYSTEM_FROM_IMPORTED=ON \
+    -DCMAKE_CXX_FLAGS="-Wno-stringop-overflow" \
+    -DCMAKE_C_FLAGS="-Wno-stringop-overflow"
+
+# Strip standalone -Werror only (not -Werror=something flags)
+RUN find /build -name "*.cmake" -o -name "CMakeLists.txt" | xargs grep -rl -- "-Werror" | xargs sed -i 's/-Werror[^=a-zA-Z]//g; s/-Werror$//g' || true
+
+# Limit parallelism to 2 jobs — QEMU segfaults under heavy parallel C++ compilation
+RUN cmake --build /build --parallel 2
+RUN cmake --install /build

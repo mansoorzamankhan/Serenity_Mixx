@@ -1,0 +1,9 @@
+build/
+dist/
+.git/
+*.o
+*.a
+*.so
+*.deb
+*.AppImage
+buildenv/

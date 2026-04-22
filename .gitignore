@@ -29,6 +29,9 @@ compile_commands.json
 /build*
 /install
 
+# Bundled hidapi source — system package libhidapi-hidraw0 satisfies find_package
+/hidapi
+
 # Exclude unneeded files from GoogleTest library when updating our bundled
 # GoogleTest library in the lib/ directory
 lib/googletest/docs
