@@ -1395,6 +1395,23 @@ WEffectChainPresetButton::menu-indicator {
 #EffectKnob {
 }
 
+/* Serenity: close / back-to-launcher button in toolbar */
+#SerenityCloseButton {
+  background-color: #7A0000;
+  color: #FFFFFF;
+  border: 1px solid #AA0000;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 11px;
+}
+#SerenityCloseButton:hover {
+  background-color: #AA0000;
+  border-color: #CC0000;
+}
+#SerenityCloseButton:pressed {
+  background-color: #CC0000;
+}
+
 #EffectButtonParameter {
   margin-top: 3px;
 }

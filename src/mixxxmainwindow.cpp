@@ -35,6 +35,7 @@
 #include "broadcast/broadcastmanager.h"
 #endif
 #include "control/controlindicatortimer.h"
+#include "control/controlpushbutton.h"
 #include "library/library.h"
 #include "library/library_decl.h"
 #include "library/library_prefs.h"
@@ -590,6 +591,15 @@ void MixxxMainWindow::initializeWindow() {
 
     setWindowIcon(QIcon(MIXXX_ICON_PATH));
     slotUpdateWindowTitle(TrackPointer());
+
+    // Serenity: skin-accessible quit control — lets the toolbar close button
+    // call close() on this window via [App],quit ConfigKey.
+    auto* pQuit = new ControlPushButton(ConfigKey(QStringLiteral("[App]"), QStringLiteral("quit")), this);
+    connect(pQuit, &ControlObject::valueChanged, this, [this](double v) {
+        if (v > 0.0) {
+            close();
+        }
+    });
 }
 
 #ifndef __APPLE__
