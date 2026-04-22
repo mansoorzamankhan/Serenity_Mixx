@@ -427,11 +427,6 @@
           <WidgetGroup><Size>0f,1min</Size></WidgetGroup>
 
           <WidgetGroup>
-            <Size>94f,22f</Size>
-            <BackPath scalemode="STRETCH_ASPECT">image/mixxx_logo.svg</BackPath>
-          </WidgetGroup>
-
-          <WidgetGroup>
             <SizePolicy>min,min</SizePolicy>
             <Layout>horizontal</Layout>
             <Children>
