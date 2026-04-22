@@ -446,13 +446,10 @@
                 <NumberStates>1</NumberStates>
                 <State>
                   <Number>0</Number>
-                  <Text>✕ BACK</Text>
+                  <Text>X BACK</Text>
                 </State>
                 <Connection>
                   <ConfigKey>[App],quit</ConfigKey>
-                  <EmitOnDownPress>true</EmitOnDownPress>
-                  <ButtonState>LeftButton</ButtonState>
-                  <SetValue>1</SetValue>
                 </Connection>
               </PushButton>
               <WidgetGroup><Size>6f,1min</Size></WidgetGroup>
