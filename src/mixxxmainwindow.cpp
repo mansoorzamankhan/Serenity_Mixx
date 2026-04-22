@@ -602,24 +602,24 @@ void MixxxMainWindow::attachSerenityCloseButton() {
     // Remove previous button if skin was reloaded
     delete m_pSerenityCloseBtn;
 
-    m_pSerenityCloseBtn = new QPushButton(QStringLiteral("X  BACK"), cw);
-    m_pSerenityCloseBtn->setFixedSize(90, 32);
+    m_pSerenityCloseBtn = new QPushButton(QStringLiteral("X"), cw);
+    m_pSerenityCloseBtn->setFixedSize(48, 48);
     m_pSerenityCloseBtn->setStyleSheet(
             QStringLiteral("QPushButton {"
                            "  background-color: #CC0000;"
                            "  color: #FFFFFF;"
                            "  font-weight: bold;"
-                           "  font-size: 13px;"
+                           "  font-size: 20px;"
                            "  border: none;"
-                           "  border-radius: 4px;"
+                           "  border-radius: 0px;"
                            "}"
                            "QPushButton:hover { background-color: #FF2200; }"
-                           "QPushButton:pressed { background-color: #990000; }"));
+                           "QPushButton:pressed { background-color: #880000; }"));
     m_pSerenityCloseBtn->setCursor(Qt::PointingHandCursor);
     connect(m_pSerenityCloseBtn, &QPushButton::clicked, this, &MixxxMainWindow::close);
 
-    // Position top-right corner; stays updated via eventFilter on cw
-    m_pSerenityCloseBtn->move(cw->width() - m_pSerenityCloseBtn->width() - 10, 10);
+    // Flush to the absolute top-right corner — no margin
+    m_pSerenityCloseBtn->move(cw->width() - m_pSerenityCloseBtn->width(), 0);
     m_pSerenityCloseBtn->raise();
     m_pSerenityCloseBtn->show();
 
@@ -1475,7 +1475,7 @@ bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
             event->type() == QEvent::Resize) {
         QWidget* cw = centralWidget();
         m_pSerenityCloseBtn->move(
-                cw->width() - m_pSerenityCloseBtn->width() - 10, 10);
+                cw->width() - m_pSerenityCloseBtn->width(), 0);
         m_pSerenityCloseBtn->raise();
     }
 
