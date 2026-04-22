@@ -603,7 +603,11 @@ void MixxxMainWindow::attachSerenityCloseButton() {
     delete m_pSerenityCloseBtn;
 
     m_pSerenityCloseBtn = new QPushButton(QStringLiteral("X"), cw);
-    m_pSerenityCloseBtn->setFixedSize(48, 48);
+    // 96x24 — double width, half height of original 48x48
+    static constexpr int kBtnW      = 96;
+    static constexpr int kBtnH      = 24;
+    static constexpr int kRightGap  = 2; // shifted 48px right
+    m_pSerenityCloseBtn->setFixedSize(kBtnW, kBtnH);
     m_pSerenityCloseBtn->setStyleSheet(
             QStringLiteral("QPushButton {"
                            "  background-color: #CC0000;"
@@ -618,8 +622,8 @@ void MixxxMainWindow::attachSerenityCloseButton() {
     m_pSerenityCloseBtn->setCursor(Qt::PointingHandCursor);
     connect(m_pSerenityCloseBtn, &QPushButton::clicked, this, &MixxxMainWindow::close);
 
-    // Flush to the absolute top-right corner — no margin
-    m_pSerenityCloseBtn->move(cw->width() - m_pSerenityCloseBtn->width(), 0);
+    // Positioned just left of the settings gear, flush to the top
+    m_pSerenityCloseBtn->move(cw->width() - kBtnW - kRightGap, 0);
     m_pSerenityCloseBtn->raise();
     m_pSerenityCloseBtn->show();
 
@@ -1474,8 +1478,9 @@ bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (m_pSerenityCloseBtn && obj == centralWidget() &&
             event->type() == QEvent::Resize) {
         QWidget* cw = centralWidget();
-        m_pSerenityCloseBtn->move(
-                cw->width() - m_pSerenityCloseBtn->width(), 0);
+        static constexpr int kBtnW     = 85;
+        static constexpr int kRightGap = 0;
+        m_pSerenityCloseBtn->move(cw->width() - kBtnW - kRightGap, 0);
         m_pSerenityCloseBtn->raise();
     }
 
