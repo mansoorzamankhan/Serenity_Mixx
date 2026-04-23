@@ -1,5 +1,6 @@
 #include "mixxxmainwindow.h"
 
+#include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QPushButton>
@@ -305,8 +306,10 @@ void MixxxMainWindow::initialize() {
 #endif
 
     WaveformWidgetFactory::createInstance(); // takes a long time
+    qApp->processEvents();
     WaveformWidgetFactory::instance()->setConfig(m_pCoreServices->getSettings());
     WaveformWidgetFactory::instance()->startVSync(m_pGuiTick, m_pVisualsManager, false);
+    qApp->processEvents();
 
     connect(this,
             &MixxxMainWindow::skinLoaded,
@@ -354,6 +357,7 @@ void MixxxMainWindow::initialize() {
 
     tryParseAndSetDefaultStyleSheet();
 
+    qApp->processEvents();
     if (!loadConfiguredSkin()) {
         reportCriticalErrorAndQuit(
                 "default skin cannot be loaded - see <b>mixxx</b> trace for more information");
