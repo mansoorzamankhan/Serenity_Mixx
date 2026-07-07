@@ -72,10 +72,10 @@
                   <Splitter>
                     <ObjectName>SidebarCoverSplitter</ObjectName>
                     <Size>me,me</Size>
-                    <SplitSizes>1,1</SplitSizes>
+                    <SplitSizes>3,1</SplitSizes>
                     <SplitSizesConfigKey>[Skin],coverArt_splitsize</SplitSizesConfigKey>
                     <Orientation>vertical</Orientation>
-                    <Collapsible>0,0</Collapsible>
+                    <Collapsible>0,1</Collapsible>
                     <Children>
                       <!--Library Tree View-->
                       <WidgetGroup>
@@ -85,14 +85,15 @@
                           <LibrarySidebar></LibrarySidebar>
                         </Children>
                       </WidgetGroup>
-                      <!--Cover Art-->
+                      <!--Cover Art (reduced default size, collapsible)-->
                       <WidgetGroup>
                         <ObjectName>AlignCenter</ObjectName>
                         <Layout>vertical</Layout>
                         <Children>
                           <CoverArt>
                             <SizePolicy>me,me</SizePolicy>
-                            <MinimumSize>40,40</MinimumSize>
+                            <MinimumSize>30,30</MinimumSize>
+                            <MaximumSize>120,120</MaximumSize>
                           </CoverArt>
                         </Children>
                         <Connection>

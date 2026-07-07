@@ -346,6 +346,118 @@
       <SetVariable name="OverviewFontSizeSampler">10</SetVariable>
       <SetVariable name="OverviewFontSizePreview">9</SetVariable>
     </Scheme><!-- Classic -->
+
+    <Scheme>
+      <Name>Serenity</Name>
+      <!-- Serenity theme: deep black backgrounds, Serenity orange (#E8890C) accents,
+           white text. Matches the Serenity App visual language. -->
+      <LaunchImageStyle>
+        LaunchImage {
+          background-color: #060606;
+        }
+        QLabel {
+          image: url(skins:LateNight/serenity/style/mixxx_logo.svg);
+          padding: 0;
+          margin: 0px 2px 0px 2px;
+          border: none;
+          min-width: 160px;
+          max-width: 160px;
+          min-height: 40px;
+          max-height: 40px;
+        }
+        QProgressBar {
+          background: url(skins:LateNight/serenity/style/progressbar_bg.svg);
+          border: none;
+          min-width: 164px;
+          max-width: 164px;
+          min-height: 5px;
+          max-height: 5px;
+        }
+        QProgressBar::chunk {
+          background: url(skins:LateNight/serenity/style/progressbar.svg);
+        }
+      </LaunchImageStyle>
+
+      <Style src="skins:LateNight/style_serenity.qss"/>
+
+      <SetVariable name="BtnScheme">serenity</SetVariable>
+      <SetVariable name="KnobScheme">serenity</SetVariable>
+      <SetVariable name="SliderScheme">serenity</SetVariable>
+      <SetVariable name="StyleScheme">serenity</SetVariable>
+
+      <SetVariable name="TopRegion_BtnType">embedded</SetVariable>
+      <SetVariable name="SubRegion_BtnType">embedded</SetVariable>
+
+      <!-- Knob settings -->
+      <SetVariable name="PotiMinAngle">-130</SetVariable>
+      <SetVariable name="PotiMaxAngle">130</SetVariable>
+      <!-- Arc Settings -->
+      <SetVariable name="ArcRadiusBig">14.5</SetVariable>
+      <SetVariable name="ArcRadiusCompact">12.5</SetVariable>
+      <SetVariable name="ArcRadiusSmall">12.0</SetVariable>
+      <SetVariable name="ArcThicknessBig">2</SetVariable>
+      <SetVariable name="ArcRoundCaps">true</SetVariable>
+      <!-- Arc Colors — Serenity orange + teal -->
+      <SetVariable name="ArcColorEq">#707070</SetVariable>
+      <SetVariable name="ArcColorGain">#c47208</SetVariable>
+      <SetVariable name="ArcColorFx12Quick">#518f00</SetVariable>
+      <SetVariable name="ArcColorFx34">#028392</SetVariable>
+      <SetVariable name="ArcColorFxParameter">#6d6d6d</SetVariable>
+      <SetVariable name="ArcColorGainLow">#8a4e00</SetVariable>
+      <SetVariable name="ArcColorMstBal">#a00000</SetVariable>
+      <SetVariable name="ArcColorFxMix">#a00000</SetVariable>
+      <!-- Knob pointer colors -->
+      <SetVariable name="KnobColorEq">grey</SetVariable>
+      <SetVariable name="KnobColorQuickEffect">green</SetVariable>
+      <SetVariable name="KnobColorFx12">green</SetVariable>
+      <SetVariable name="KnobColorFx34">blue</SetVariable>
+      <SetVariable name="KnobColorFxParameter">grey</SetVariable>
+      <SetVariable name="EqKillDotSize">9f,9f</SetVariable>
+
+      <!-- Slider bar settings -->
+      <SetVariable name="BarBgColor">#020202</SetVariable>
+      <SetVariable name="BarColorVolume">#c47208</SetVariable>
+      <SetVariable name="BarColorCrossfader">#c47208</SetVariable>
+      <SetVariable name="BarColorPitch">#888</SetVariable>
+      <SetVariable name="BarWidth">2</SetVariable>
+      <SetVariable name="BarMarginVolume">8,8</SetVariable>
+      <SetVariable name="BarMarginPitch">7,8</SetVariable>
+      <SetVariable name="BarMarginPitchSampler">5,5</SetVariable>
+      <SetVariable name="BarMarginCrossfader">7,7</SetVariable>
+
+      <!-- Waveform colors -->
+      <SetVariable name="BgColorOverview_12">#0a0a0d</SetVariable>
+      <SetVariable name="BgColorOverview_34">#00111a</SetVariable>
+      <SetVariable name="BgColorOverview_SamPre">rgba(10, 10, 13, 20)</SetVariable>
+      <SetVariable name="BgColorWaveform_12">#0a0a0c</SetVariable>
+      <SetVariable name="BgColorWaveform_34">#00111a</SetVariable>
+      <SetVariable name="SignalColor_12">#e8890c</SetVariable>
+      <SetVariable name="SignalColor_34">#00c6c0</SetVariable>
+
+      <SetVariable name="SignalHighColor">mediumblue</SetVariable>
+      <SetVariable name="SignalMidColor">darkgreen</SetVariable>
+      <SetVariable name="SignalLowColor">orangered</SetVariable>
+
+      <SetVariable name="DimBrightThresholdOverview">127</SetVariable>
+      <SetVariable name="DimBrightThresholdWaveform">105</SetVariable>
+      <SetVariable name="DimBrightThresholdHotcueBtn">105</SetVariable>
+      <SetVariable name="DndRectMarginHotcueBtn">1</SetVariable>
+
+      <SetVariable name="AxesColor">#777</SetVariable>
+      <SetVariable name="BeatColor">#777</SetVariable>
+      <SetVariable name="PlayPosColor">#E8890C</SetVariable>
+      <SetVariable name="CueColor">#ff7a01</SetVariable>
+      <SetVariable name="LoopColor">#00b400</SetVariable>
+      <SetVariable name="IntroOutroColor">#2c5c9a</SetVariable>
+      <SetVariable name="PlayedOverlayColor">#cc0a0a0d</SetVariable>
+      <SetVariable name="EndOfTrackColor">#f856e7</SetVariable>
+      <SetVariable name="SlipBorderOutlineColor">#E8890C</SetVariable>
+      <SetVariable name="PassthroughLabelColor">#c47208</SetVariable>
+      <SetVariable name="OverviewFontSizeDeck">13</SetVariable>
+      <SetVariable name="OverviewFontSizeDeckMini">11</SetVariable>
+      <SetVariable name="OverviewFontSizeSampler">10</SetVariable>
+      <SetVariable name="OverviewFontSizePreview">9</SetVariable>
+    </Scheme><!-- Serenity -->
   </Schemes>
 
   <ObjectName>Mixxx</ObjectName>
