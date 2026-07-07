@@ -170,7 +170,7 @@ BrowseFeature::~BrowseFeature() {
 }
 
 QVariant BrowseFeature::title() {
-    return QVariant(tr("Computer"));
+    return QVariant(tr("PC Folders"));
 }
 
 void BrowseFeature::slotAddQuickLink() {
@@ -510,15 +510,9 @@ std::vector<std::unique_ptr<TreeItem>> BrowseFeature::getChildDirectoryItems(
 }
 
 QString BrowseFeature::getRootViewHtml() const {
-    const QString browseTitle = tr("Computer");
-    const QString browseSummary = tr(
-            "\"Computer\" lets you navigate, view, and load tracks"
-            " from folders on your hard disk and external devices.");
-    const QString browseDetails = tr(
-                                          "It shows the data from the file tags, not track data"
-                                          " from your Mixxx library like other track views.") +
-            "<br><br>" +
-            tr("If you load a track file from here, it will be added to your library.");
+    const QString browseTitle = tr("Choose Tracks from This PC");
+    const QString browseSummary = tr("Pick a folder on the left, then double-click a track to load it.");
+    const QString browseDetails = tr("Use Quick Links for Music, Downloads, Desktop, and Documents, or open the root folder to browse anywhere on the PC.");
 
     QString html;
     html.append(QString("<h2>%1</h2>").arg(browseTitle));

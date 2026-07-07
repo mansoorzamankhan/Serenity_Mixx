@@ -143,6 +143,7 @@ Library::Library(
             m_pBrowseFeature,
             &BrowseFeature::slotLibraryScanFinished);
     addFeature(m_pBrowseFeature);
+    m_pSidebarModel->setDefaultSelection(4);
 
     addFeature(new RecordingFeature(this, m_pConfig, pRecordingManager));
 
