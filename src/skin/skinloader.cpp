@@ -108,21 +108,10 @@ SkinPointer SkinLoader::getSkin(const QString& skinName) const {
 }
 
 SkinPointer SkinLoader::getConfiguredSkin() const {
-    QString configSkin = m_pConfig->getValueString(ConfigKey("[Config]", "ResizableSkin"));
+    QString configSkin = getDefaultSkinName();
 
-    // If we don't have a skin defined, we might be migrating from 1.11 and
-    // should pick the closest-possible skin.
-    if (configSkin.isEmpty()) {
-        QString oldSkin = m_pConfig->getValueString(ConfigKey("[Config]", "Skin"));
-        if (!oldSkin.isEmpty()) {
-            configSkin = pickResizableSkin(oldSkin);
-        }
-    }
-
-    // Pick default skin otherwise
-    if (configSkin.isEmpty()) {
-        configSkin = getDefaultSkinName();
-    }
+    // Serenity_Mixx is an appliance build. Always prefer the bundled
+    // LateNight skin instead of an older profile's saved skin selection.
 
     // Try to load the desired skin
     DEBUG_ASSERT(!configSkin.isEmpty());

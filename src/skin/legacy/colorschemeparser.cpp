@@ -60,19 +60,19 @@ QDomNode ColorSchemeParser::findConfiguredColorSchemeNode(
         return QDomNode();
     };
 
+    // Serenity is the intended scheme for this appliance build. Prefer it even
+    // when an older Mixxx profile has PaleMoon or Classic saved in [Config].
+    QDomNode serenitySchemeNode = findSchemeByName(QStringLiteral("Serenity"));
+    if (!serenitySchemeNode.isNull()) {
+        return serenitySchemeNode;
+    }
+
     const QString selectedSchemeName = pConfig->getValueString(ConfigKey("[Config]", "Scheme"));
     if (!selectedSchemeName.isEmpty()) {
         QDomNode configuredSchemeNode = findSchemeByName(selectedSchemeName);
         if (!configuredSchemeNode.isNull()) {
             return configuredSchemeNode;
         }
-    }
-
-    // Serenity is the intended default for this appliance build. Prefer it over
-    // the first generic skin scheme if the profile has no valid scheme saved.
-    QDomNode serenitySchemeNode = findSchemeByName(QStringLiteral("Serenity"));
-    if (!serenitySchemeNode.isNull()) {
-        return serenitySchemeNode;
     }
 
     return schemesNode.firstChild();
