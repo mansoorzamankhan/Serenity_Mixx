@@ -123,8 +123,7 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
     // which can cause a crash when using menu shortcuts like Alt+F after resetting
     // the menubar. See https://github.com/mixxxdj/mixxx/issues/11320
     if (m_supportsGlobalMenuBar) {
-        bool fullscreenPref = m_pCoreServices->getSettings()->getValue<bool>(
-                ConfigKey("[Config]", "StartInFullscreen"));
+        bool fullscreenPref = true;
         QApplication::setAttribute(
                 Qt::AA_DontUseNativeMenuBar,
                 CmdlineArgs::Instance().getStartInFullscreen() || fullscreenPref);
@@ -234,8 +233,7 @@ void MixxxMainWindow::initialize() {
     // if we were told to start in fullscreen mode on the command-line
     // or if the user chose to always start in fullscreen mode.
     // The Fullscreen menu item is refreshed in connectMenuBar()
-    bool fullscreenPref = m_pCoreServices->getSettings()->getValue<bool>(
-            ConfigKey("[Config]", "StartInFullscreen"));
+    bool fullscreenPref = true;
     if ((CmdlineArgs::Instance().getStartInFullscreen() || fullscreenPref) &&
             // could be we're fullscreen already after setGeomtery(previousGeometry)
             !isFullScreen()) {
@@ -487,8 +485,7 @@ MixxxMainWindow::~MixxxMainWindow() {
     // [Config],StartInFullscreen is '0'.
     // https://github.com/mixxxdj/mixxx/issues/10005
     // So let's quit fullscreen if StartInFullscreen is not checked in Preferences.
-    bool fullscreenPref = m_pCoreServices->getSettings()->getValue<bool>(
-            ConfigKey("[Config]", "StartInFullscreen"));
+    bool fullscreenPref = true;
     if (isFullScreen() && !fullscreenPref) {
         // Simply maximize the window so we can store a geometry that fits the screen.
         // Don't call slotViewFullScreen(false) (calls showNormal()) because that
