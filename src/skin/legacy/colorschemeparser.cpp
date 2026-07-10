@@ -48,22 +48,33 @@ QDomNode ColorSchemeParser::findConfiguredColorSchemeNode(
         return {};
     }
 
-    QDomNode schemeNode = schemesNode.firstChild();
-    const QString selectedSchemeName = pConfig->getValueString(ConfigKey("[Config]", "Scheme"));
-    if (selectedSchemeName.isEmpty()) {
-        // If no scheme selected, accept the first one in the file
-        return schemeNode;
-    }
-
-    while (!schemeNode.isNull()) {
-        QString schemeName = XmlParse::selectNodeQString(schemeNode, "Name");
-        if (schemeName == selectedSchemeName) {
-            return schemeNode;
+    const auto findSchemeByName = [schemesNode](const QString& selectedSchemeName) {
+        QDomNode schemeNode = schemesNode.firstChild();
+        while (!schemeNode.isNull()) {
+            const QString schemeName = XmlParse::selectNodeQString(schemeNode, "Name");
+            if (schemeName == selectedSchemeName) {
+                return schemeNode;
+            }
+            schemeNode = schemeNode.nextSibling();
         }
-        schemeNode = schemeNode.nextSibling();
+        return QDomNode();
+    };
+
+    const QString selectedSchemeName = pConfig->getValueString(ConfigKey("[Config]", "Scheme"));
+    if (!selectedSchemeName.isEmpty()) {
+        QDomNode configuredSchemeNode = findSchemeByName(selectedSchemeName);
+        if (!configuredSchemeNode.isNull()) {
+            return configuredSchemeNode;
+        }
     }
 
-    // If we didn't find a matching color scheme, pick the first one
+    // Serenity is the intended default for this appliance build. Prefer it over
+    // the first generic skin scheme if the profile has no valid scheme saved.
+    QDomNode serenitySchemeNode = findSchemeByName(QStringLiteral("Serenity"));
+    if (!serenitySchemeNode.isNull()) {
+        return serenitySchemeNode;
+    }
+
     return schemesNode.firstChild();
 }
 
