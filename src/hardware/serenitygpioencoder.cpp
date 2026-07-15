@@ -1,10 +1,10 @@
 #include "hardware/serenitygpioencoder.h"
 
 #include <gpiod.h>
-#include <poll.h>
 
 #include <QDebug>
 #include <cstdint>
+#include <ctime>
 #include <utility>
 
 namespace {
@@ -31,12 +31,7 @@ constexpr int8_t kQuadratureTable[16] = {
         0,
 };
 
-constexpr int kPollTimeoutMillis = 200;
-constexpr size_t kEdgeEventBufferCapacity = 16;
-
-int lineValueBit(gpiod_line_request* pRequest, unsigned int offset) {
-    return gpiod_line_request_get_value(pRequest, offset) == GPIOD_LINE_VALUE_ACTIVE ? 1 : 0;
-}
+constexpr int kWaitTimeoutMillis = 200;
 
 } // namespace
 
@@ -52,7 +47,8 @@ SerenityGpioEncoder::SerenityGpioEncoder(QString chipPath,
           m_onTick(std::move(onTick)),
           m_stopRequested(false),
           m_pChip(nullptr),
-          m_pRequest(nullptr),
+          m_pLineA(nullptr),
+          m_pLineB(nullptr),
           m_lastState(0) {
 }
 
@@ -66,6 +62,10 @@ void SerenityGpioEncoder::requestStop() {
     m_stopRequested.store(true);
 }
 
+int SerenityGpioEncoder::readLineBit(gpiod_line* pLine) const {
+    return gpiod_line_get_value(pLine) > 0 ? 1 : 0;
+}
+
 bool SerenityGpioEncoder::openAndRequestLines() {
     m_pChip = gpiod_chip_open(qPrintable(m_chipPath));
     if (!m_pChip) {
@@ -73,60 +73,46 @@ bool SerenityGpioEncoder::openAndRequestLines() {
         return false;
     }
 
-    gpiod_line_settings* pSettings = gpiod_line_settings_new();
-    if (!pSettings) {
-        qWarning() << "SerenityGpioEncoder: gpiod_line_settings_new failed";
+    m_pLineA = gpiod_chip_get_line(m_pChip, m_lineOffsetA);
+    m_pLineB = gpiod_chip_get_line(m_pChip, m_lineOffsetB);
+    if (!m_pLineA || !m_pLineB) {
+        qWarning() << "SerenityGpioEncoder: failed to get lines" << m_lineOffsetA
+                    << m_lineOffsetB << "on" << m_chipPath;
         return false;
     }
-    gpiod_line_settings_set_direction(pSettings, GPIOD_LINE_DIRECTION_INPUT);
-    gpiod_line_settings_set_edge_detection(pSettings, GPIOD_LINE_EDGE_BOTH);
+
+    gpiod_line_bulk requestBulk;
+    gpiod_line_bulk_init(&requestBulk);
+    gpiod_line_bulk_add(&requestBulk, m_pLineA);
+    gpiod_line_bulk_add(&requestBulk, m_pLineB);
+
     // Most bare optical/mechanical encoder modules idle high and pull a
     // line low on contact, so an internal pull-up keeps them from floating.
-    gpiod_line_settings_set_bias(pSettings, GPIOD_LINE_BIAS_PULL_UP);
-
-    gpiod_line_config* pLineConfig = gpiod_line_config_new();
-    if (!pLineConfig) {
-        qWarning() << "SerenityGpioEncoder: gpiod_line_config_new failed";
-        gpiod_line_settings_free(pSettings);
-        return false;
-    }
-    const unsigned int offsets[2] = {m_lineOffsetA, m_lineOffsetB};
-    if (gpiod_line_config_add_line_settings(pLineConfig, offsets, 2, pSettings) != 0) {
-        qWarning() << "SerenityGpioEncoder: gpiod_line_config_add_line_settings failed";
-        gpiod_line_settings_free(pSettings);
-        gpiod_line_config_free(pLineConfig);
+    if (gpiod_line_request_bulk_both_edges_events_flags(&requestBulk,
+                qPrintable(m_consumerName),
+                GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP) != 0) {
+        qWarning() << "SerenityGpioEncoder: failed to request edge events on" << m_chipPath
+                    << "offsets" << m_lineOffsetA << m_lineOffsetB;
         return false;
     }
 
-    gpiod_request_config* pRequestConfig = gpiod_request_config_new();
-    if (pRequestConfig) {
-        gpiod_request_config_set_consumer(pRequestConfig, qPrintable(m_consumerName));
-    }
-
-    m_pRequest = gpiod_chip_request_lines(m_pChip, pRequestConfig, pLineConfig);
-
-    if (pRequestConfig) {
-        gpiod_request_config_free(pRequestConfig);
-    }
-    gpiod_line_config_free(pLineConfig);
-    gpiod_line_settings_free(pSettings);
-
-    if (!m_pRequest) {
-        qWarning() << "SerenityGpioEncoder: gpiod_chip_request_lines failed for"
-                    << m_chipPath << "offsets" << m_lineOffsetA << m_lineOffsetB;
-        return false;
-    }
-
-    const int a = lineValueBit(m_pRequest, m_lineOffsetA);
-    const int b = lineValueBit(m_pRequest, m_lineOffsetB);
+    const int a = readLineBit(m_pLineA);
+    const int b = readLineBit(m_pLineB);
     m_lastState = (a << 1) | b;
     return true;
 }
 
 void SerenityGpioEncoder::releaseLines() {
-    if (m_pRequest) {
-        gpiod_line_request_release(m_pRequest);
-        m_pRequest = nullptr;
+    // Releasing either line of a bulk request releases the whole request;
+    // gpiod_line_release() on each is still the documented, safe way to
+    // tear both down individually regardless of request grouping.
+    if (m_pLineA) {
+        gpiod_line_release(m_pLineA);
+        m_pLineA = nullptr;
+    }
+    if (m_pLineB) {
+        gpiod_line_release(m_pLineB);
+        m_pLineB = nullptr;
     }
     if (m_pChip) {
         gpiod_chip_close(m_pChip);
@@ -134,69 +120,60 @@ void SerenityGpioEncoder::releaseLines() {
     }
 }
 
-void SerenityGpioEncoder::processEdgeEvents(void* pEventBufferVoid, int numEvents) {
-    auto* pEventBuffer = static_cast<gpiod_edge_event_buffer*>(pEventBufferVoid);
-    int state = m_lastState;
-    for (int i = 0; i < numEvents; ++i) {
-        gpiod_edge_event* pEvent = gpiod_edge_event_buffer_get_event(pEventBuffer, i);
-        if (!pEvent) {
-            continue;
-        }
-        const unsigned int offset = gpiod_edge_event_get_line_offset(pEvent);
-        const bool rising = gpiod_edge_event_get_event_type(pEvent) == GPIOD_EDGE_EVENT_RISING_EDGE;
-
-        if (offset == m_lineOffsetA) {
-            state = rising ? (state | 0b10) : (state & 0b01);
-        } else if (offset == m_lineOffsetB) {
-            state = rising ? (state | 0b01) : (state & 0b10);
-        } else {
-            continue;
-        }
-
-        const int delta = kQuadratureTable[(m_lastState << 2) | state];
-        if (delta != 0 && m_onTick) {
-            m_onTick(delta);
-        }
-        m_lastState = state;
-    }
-}
-
 void SerenityGpioEncoder::run() {
     if (!openAndRequestLines()) {
-        return;
-    }
-
-    gpiod_edge_event_buffer* pEventBuffer = gpiod_edge_event_buffer_new(kEdgeEventBufferCapacity);
-    if (!pEventBuffer) {
-        qWarning() << "SerenityGpioEncoder: gpiod_edge_event_buffer_new failed";
         releaseLines();
         return;
     }
 
-    const int fd = gpiod_line_request_get_fd(m_pRequest);
-    struct pollfd pfd = {};
-    pfd.fd = fd;
-    pfd.events = POLLIN;
+    gpiod_line_bulk watchBulk;
+    gpiod_line_bulk_init(&watchBulk);
+    gpiod_line_bulk_add(&watchBulk, m_pLineA);
+    gpiod_line_bulk_add(&watchBulk, m_pLineB);
 
     while (!m_stopRequested.load()) {
-        const int pollResult = ::poll(&pfd, 1, kPollTimeoutMillis);
-        if (pollResult < 0) {
-            qWarning() << "SerenityGpioEncoder: poll() failed on" << m_chipPath;
-            break;
-        }
-        if (pollResult == 0 || !(pfd.revents & POLLIN)) {
-            continue;
-        }
-        const int numEvents = gpiod_line_request_read_edge_events(
-                m_pRequest, pEventBuffer, kEdgeEventBufferCapacity);
-        if (numEvents < 0) {
-            qWarning() << "SerenityGpioEncoder: gpiod_line_request_read_edge_events failed on"
+        struct timespec timeout = {};
+        timeout.tv_sec = kWaitTimeoutMillis / 1000;
+        timeout.tv_nsec = static_cast<long>(kWaitTimeoutMillis % 1000) * 1000000L;
+
+        gpiod_line_bulk eventBulk;
+        gpiod_line_bulk_init(&eventBulk);
+
+        const int waitResult = gpiod_line_event_wait_bulk(&watchBulk, &timeout, &eventBulk);
+        if (waitResult < 0) {
+            qWarning() << "SerenityGpioEncoder: gpiod_line_event_wait_bulk failed on"
                         << m_chipPath;
             break;
         }
-        processEdgeEvents(pEventBuffer, numEvents);
+        if (waitResult == 0) {
+            continue; // timed out with no events; loop back and re-check m_stopRequested
+        }
+
+        int state = m_lastState;
+        for (unsigned int i = 0; i < eventBulk.num_lines; ++i) {
+            gpiod_line* pLine = eventBulk.lines[i];
+            struct gpiod_line_event event;
+            if (gpiod_line_event_read(pLine, &event) != 0) {
+                continue;
+            }
+            const unsigned int offset = gpiod_line_offset(pLine);
+            const bool rising = event.event_type == GPIOD_LINE_EVENT_RISING_EDGE;
+
+            if (offset == m_lineOffsetA) {
+                state = rising ? (state | 0b10) : (state & 0b01);
+            } else if (offset == m_lineOffsetB) {
+                state = rising ? (state | 0b01) : (state & 0b10);
+            } else {
+                continue;
+            }
+
+            const int delta = kQuadratureTable[(m_lastState << 2) | state];
+            if (delta != 0 && m_onTick) {
+                m_onTick(delta);
+            }
+            m_lastState = state;
+        }
     }
 
-    gpiod_edge_event_buffer_free(pEventBuffer);
     releaseLines();
 }

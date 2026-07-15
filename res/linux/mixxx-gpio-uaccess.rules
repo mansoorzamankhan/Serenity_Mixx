@@ -1,0 +1,6 @@
+# Allows the locally logged-in user to access the GPIO character device
+# without root, for the Serenity RPi jog wheel encoder bridge (see
+# SERENITY.md "Hardware Integration"). Uses the same systemd-logind
+# uaccess mechanism as mixxx-usb-uaccess.rules.
+
+SUBSYSTEM=="gpio", KERNEL=="gpiochip*", TAG+="uaccess"

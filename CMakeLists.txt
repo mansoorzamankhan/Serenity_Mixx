@@ -2658,18 +2658,20 @@ if(UNIX AND NOT APPLE)
     endif()
     if(MIXXX_UDEVDIR STREQUAL "${MIXXX_INSTALL_DATADIR}/udev")
       install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/res/linux/mixxx-usb-uaccess.rules"
+        FILES
+          "${CMAKE_CURRENT_SOURCE_DIR}/res/linux/mixxx-usb-uaccess.rules"
+          "${CMAKE_CURRENT_SOURCE_DIR}/res/linux/mixxx-gpio-uaccess.rules"
         DESTINATION "${MIXXX_UDEVDIR}/rules.d"
       )
       install(
         CODE
           "
       message(STATUS \"Important Note: Installation of udev rules\n\"
-          \"The udev rule file for USB HID and Bulk controller permissions have been\n\"
-          \"installed to:\n\"
+          \"The udev rule files for USB HID/Bulk and GPIO controller permissions have\n\"
+          \"been installed to:\n\"
           \"    ${MIXXX_UDEVDIR}/rules.d.\n\"
           \"If you are installing Mixxx from source for your own use, copy\n\"
-          \"mixxx-usb-uaccess.rules to /etc/udev/rules.d/ and run:\n\"
+          \"mixxx-usb-uaccess.rules and mixxx-gpio-uaccess.rules to /etc/udev/rules.d/ and run:\n\"
           \"    udevadm control --reload-rules && udevadm trigger\n\"
           \"as root to load the rules.\n\"
           \"If you are building a package for a distribution, the correct directory for\n\"
@@ -5160,24 +5162,27 @@ endif()
 
 # Serenity RPi GPIO jog wheel encoder bridge
 # Reads the two optical quadrature encoders wired to the Raspberry Pi GPIO
-# (see SERENITY.md) via libgpiod v2 and republishes them as MIDI CC messages
-# on an ALSA virtual MIDI port, which Mixxx's own MIDI controller subsystem
-# then picks up like any other external MIDI controller.
+# (see SERENITY.md) via libgpiod v1's bulk edge-events API and republishes
+# them as MIDI CC messages on an ALSA virtual MIDI port, which Mixxx's own
+# MIDI controller subsystem then picks up like any other external MIDI
+# controller. Ubuntu 24.04 (the RPi 5 target) packages libgpiod 1.6.x, not
+# v2, so this intentionally targets the v1 API.
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
-  pkg_check_modules(PKGCONFIG_GPIOD libgpiod>=2.0)
+  # gpiod_line_request_bulk_both_edges_events_flags() requires >= 1.5.
+  pkg_check_modules(PKGCONFIG_GPIOD libgpiod>=1.5)
 endif()
 find_package(ALSA)
 default_option(
   SERENITY_GPIO_JOGWHEELS
-  "Serenity RPi GPIO jog wheel encoder bridge (libgpiod v2 -> ALSA virtual MIDI)"
+  "Serenity RPi GPIO jog wheel encoder bridge (libgpiod v1 -> ALSA virtual MIDI)"
   "CMAKE_SYSTEM_NAME STREQUAL Linux;PKGCONFIG_GPIOD_FOUND;ALSA_FOUND"
 )
 if(SERENITY_GPIO_JOGWHEELS)
   if(NOT PKGCONFIG_GPIOD_FOUND)
     message(
       FATAL_ERROR
-      "SERENITY_GPIO_JOGWHEELS requires libgpiod >= 2.0 (pkg-config module 'libgpiod')."
+      "SERENITY_GPIO_JOGWHEELS requires libgpiod >= 1.5 (pkg-config module 'libgpiod'); install libgpiod-dev."
     )
   endif()
   if(NOT ALSA_FOUND)

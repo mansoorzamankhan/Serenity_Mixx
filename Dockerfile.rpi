@@ -59,7 +59,7 @@ RUN apt-get install -y \
 RUN apt-get install -y libportmidi-dev || true
 RUN apt-get install -y libshout-idjc-dev || true
 
-# GPIO (Serenity jog wheel encoder bridge, needs libgpiod >= 2.0)
+# GPIO (Serenity jog wheel encoder bridge, needs libgpiod >= 1.5)
 RUN apt-get install -y libgpiod-dev
 
 # Codecs / formats

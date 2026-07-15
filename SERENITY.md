@@ -70,7 +70,7 @@ sudo apt-get install -y \
     libgpiod-dev
 ```
 
-`libgpiod-dev` must be **v2.0 or later** (the GPIO jog wheel bridge uses the libgpiod v2 character-device API). If the distro-packaged `libgpiod-dev` is older than 2.0, build libgpiod v2 from source: https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git
+`libgpiod-dev` must be **v1.5 or later** (the GPIO jog wheel bridge uses libgpiod v1's bulk edge-events API, `gpiod_line_request_bulk_both_edges_events_flags`). Ubuntu 24.04 packages libgpiod 1.6.3, which satisfies this — no source build needed. (libgpiod v2 is not packaged for Ubuntu 24.04 as of this writing, which is why this bridge targets v1 rather than v2.)
 
 **2. Clone and build**
 
@@ -124,10 +124,10 @@ Serenity_Mixx receives MIDI control input from two optical rotary encoders wired
 |---|---|
 | Encoder type | Optical quadrature, 128 PPR |
 | Interface | Direct RPi 5 GPIO (no ADC required), via `/dev/gpiochip0` |
-| Signal processing | libgpiod v2 → `src/hardware/serenitygpioencoder.cpp` → `src/hardware/serenitygpiojogwheelservice.cpp` → `src/hardware/serenitymidibridge.cpp` |
+| Signal processing | libgpiod v1 (bulk edge-events API) → `src/hardware/serenitygpioencoder.cpp` → `src/hardware/serenitygpiojogwheelservice.cpp` → `src/hardware/serenitymidibridge.cpp` |
 | MIDI transport | ALSA virtual MIDI port ("Serenity Jog Wheels"), opened in-process at startup |
 | Mixxx mapping | `res/controllers/Serenity Jog Wheels.midi.xml` |
-| Build option | `SERENITY_GPIO_JOGWHEELS` (CMake, defaults ON on Linux when libgpiod >= 2.0 and ALSA dev headers are found) |
+| Build option | `SERENITY_GPIO_JOGWHEELS` (CMake, defaults ON on Linux when libgpiod >= 1.5 and ALSA dev headers are found) |
 
 | Encoder | GPIO Pins (line offsets) | MIDI CC | Mixxx Function |
 |---|---|---|---|
@@ -136,7 +136,50 @@ Serenity_Mixx receives MIDI control input from two optical rotary encoders wired
 
 `SerenityGpioJogWheelService` is started in `main.cpp` before `ControllerManager::setUpDevices()`, so the virtual MIDI port already exists by the time Mixxx enumerates MIDI devices. In Mixxx's Controller preferences, select "Serenity Jog Wheels" and load the `Serenity Jog Wheels` mapping to activate the encoders as Deck A/B jog wheels. Each encoder detent is sent as a single MIDI CC message using the `<diff/>` (7-bit two's complement) convention: value `1` = +1 tick, value `127` = -1 tick.
 
-On non-Linux platforms, or Linux builds without libgpiod >= 2.0 / ALSA dev headers, `SERENITY_GPIO_JOGWHEELS` is off and this code is not compiled in.
+On non-Linux platforms, or Linux builds without libgpiod >= 1.5 / ALSA dev headers, `SERENITY_GPIO_JOGWHEELS` is off and this code is not compiled in.
+
+### One-Time GPIO Permission Setup (Raspberry Pi)
+
+By default `/dev/gpiochip0` is root-only, so `mixxx` running as a normal user will silently fail to open it. Since the documented workflow runs `./build/mixxx` directly (no `cmake --install`), the udev rule must be installed manually once per Pi:
+
+```bash
+sudo cp res/linux/mixxx-gpio-uaccess.rules /etc/udev/rules.d/69-mixxx-gpio-uaccess.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+This grants the active graphical-session user ACL access to `gpiochip*` devices (same `uaccess` mechanism already used for USB HID controllers). Log out/in (or reboot) once after installing it.
+
+### Verifying the Jog Wheel Bridge
+
+Work bottom-up so a failure at one layer doesn't get misdiagnosed as a failure at another:
+
+1. **Confirm libgpiod was actually found at build time.** `libgpiod-dev` must be installed first (`sudo apt-get install libgpiod-dev`) — it ships the `.pc` file `pkg-config` needs; the `libgpiod2t64`/`gpiod` runtime packages alone are not enough. During `cmake -B build`, look for:
+   ```
+   -- Checking for module 'libgpiod>=1.5'
+   ```
+   followed by a found version, not "No package 'libgpiod' found". Then confirm the option is on: `cmake -B build -L | grep SERENITY_GPIO_JOGWHEELS` should show `SERENITY_GPIO_JOGWHEELS:BOOL=ON`. If it's OFF, the jog wheel code isn't compiled in at all — everything past this step is moot until it's fixed.
+
+2. **Test the GPIO wiring independently of Mixxx**, using `gpiod-tools` (the `gpiod` apt package; already installed on the Serenity Pi image). Note this ships the **v1** `gpiomon` CLI, which takes the chip and line offsets as positional arguments (not `--chip`/`--edges`) and watches both edges by default:
+   ```bash
+   gpiomon gpiochip0 17 27 22 23
+   ```
+   Turn each jog wheel by hand; you should see rising/falling edge events printed for the corresponding pins. If nothing prints, it's a wiring/pinout/permissions problem, not a Mixxx problem — fix it here before going further.
+
+3. **Confirm the ALSA virtual MIDI port appears** once `./build/mixxx` is running:
+   ```bash
+   aconnect -io
+   ```
+   Look for a client named "Serenity Jog Wheels" with port "Jog Wheels MIDI Out". If it's missing, check the Mixxx log for `SerenityMidiBridge` or `SerenityGpioEncoder` warnings (`qWarning()` calls fail loudly with the reason: ALSA sequencer open failure, GPIO chip open failure, or line request failure).
+
+4. **Confirm ticks are actually reaching MIDI**:
+   ```bash
+   aseqdump -p "Serenity Jog Wheels:0"
+   ```
+   Turn a jog wheel; you should see `Control change` events alternating between value `1` (CW) and `127` (CCW) on controller 1 (Deck A) or 2 (Deck B), channel 0.
+
+5. **Confirm Mixxx maps it to the jog wheel.** In Mixxx: Preferences → Controllers → "Serenity Jog Wheels" → enable it and select the `Serenity Jog Wheels` mapping. Turn the encoder and confirm the on-screen Deck A/B jog wheel widget spins and, with a track loaded and playing, that scratching/pitch-bending actually audibly responds.
+
+If step 2 works but step 3 fails, the bug is in `SerenityGpioEncoder`/`SerenityGpioJogWheelService`/`SerenityMidiBridge`. If step 3 works but step 4 shows no events (or the wrong values), check the quadrature decode table and the `<diff/>` encoding in `sendJogTick()`. If step 4 works but step 5 doesn't, it's a Mixxx-side mapping/preferences issue, not a hardware/bridge issue.
 
 ---
 
