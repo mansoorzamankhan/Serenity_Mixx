@@ -16,6 +16,9 @@
 #include "controllers/controllermanager.h"
 #include "coreservices.h"
 #include "errordialoghandler.h"
+#ifdef __SERENITY_GPIO_JOGWHEELS__
+#include "hardware/serenitygpiojogwheelservice.h"
+#endif
 #include "mixxxapplication.h"
 #ifdef MIXXX_USE_QML
 #include "mixer/playermanager.h"
@@ -109,6 +112,15 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
         mainWindow.initializeQOpenGL();
 #else
         mainWindow.initialize();
+#endif
+
+#ifdef __SERENITY_GPIO_JOGWHEELS__
+        // Start reading the RPi GPIO jog wheel encoders and publishing them
+        // as MIDI over the ALSA virtual port before the ControllerManager
+        // enumerates MIDI devices below, so it picks up our virtual port on
+        // this first scan. See SERENITY.md "Planned Hardware Integration".
+        SerenityGpioJogWheelService serenityGpioJogWheelService;
+        serenityGpioJogWheelService.start();
 #endif
 
         pCoreServices->getControllerManager()->setUpDevices();

@@ -5158,6 +5158,54 @@ if(BULK)
   target_link_libraries(mixxx-lib PRIVATE LibUSB::LibUSB)
 endif()
 
+# Serenity RPi GPIO jog wheel encoder bridge
+# Reads the two optical quadrature encoders wired to the Raspberry Pi GPIO
+# (see SERENITY.md) via libgpiod v2 and republishes them as MIDI CC messages
+# on an ALSA virtual MIDI port, which Mixxx's own MIDI controller subsystem
+# then picks up like any other external MIDI controller.
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+  pkg_check_modules(PKGCONFIG_GPIOD libgpiod>=2.0)
+endif()
+find_package(ALSA)
+default_option(
+  SERENITY_GPIO_JOGWHEELS
+  "Serenity RPi GPIO jog wheel encoder bridge (libgpiod v2 -> ALSA virtual MIDI)"
+  "CMAKE_SYSTEM_NAME STREQUAL Linux;PKGCONFIG_GPIOD_FOUND;ALSA_FOUND"
+)
+if(SERENITY_GPIO_JOGWHEELS)
+  if(NOT PKGCONFIG_GPIOD_FOUND)
+    message(
+      FATAL_ERROR
+      "SERENITY_GPIO_JOGWHEELS requires libgpiod >= 2.0 (pkg-config module 'libgpiod')."
+    )
+  endif()
+  if(NOT ALSA_FOUND)
+    message(
+      FATAL_ERROR
+      "SERENITY_GPIO_JOGWHEELS requires ALSA development headers (libasound2-dev)."
+    )
+  endif()
+  target_sources(
+    mixxx-lib
+    PRIVATE
+      src/hardware/serenitygpioencoder.cpp
+      src/hardware/serenitymidibridge.cpp
+      src/hardware/serenitygpiojogwheelservice.cpp
+  )
+  target_compile_definitions(mixxx-lib PUBLIC __SERENITY_GPIO_JOGWHEELS__)
+  target_include_directories(
+    mixxx-lib
+    SYSTEM
+    PUBLIC ${PKGCONFIG_GPIOD_INCLUDE_DIRS} ${ALSA_INCLUDE_DIRS}
+  )
+  target_link_directories(mixxx-lib PRIVATE ${PKGCONFIG_GPIOD_LIBRARY_DIRS})
+  target_link_libraries(
+    mixxx-lib
+    PRIVATE ${PKGCONFIG_GPIOD_LIBRARIES} ${ALSA_LIBRARIES}
+  )
+endif()
+
 # Vinyl Control
 default_option(VINYLCONTROL "Vinyl Control support" "NOT MACAPPSTORE")
 if(VINYLCONTROL)

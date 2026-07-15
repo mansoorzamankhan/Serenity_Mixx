@@ -66,8 +66,11 @@ sudo apt-get install -y \
     libebur128-dev libfftw3-dev \
     libusb-1.0-0-dev libhidapi-dev libudev-dev \
     liblilv-dev libssl-dev libprotobuf-dev protobuf-compiler \
-    libsqlite3-dev libgtest-dev
+    libsqlite3-dev libgtest-dev \
+    libgpiod-dev
 ```
+
+`libgpiod-dev` must be **v2.0 or later** (the GPIO jog wheel bridge uses the libgpiod v2 character-device API). If the distro-packaged `libgpiod-dev` is older than 2.0, build libgpiod v2 from source: https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git
 
 **2. Clone and build**
 
@@ -113,22 +116,27 @@ git commit && git push  ──────►  git pull
 
 ---
 
-## Planned Hardware Integration
+## Hardware Integration
 
-Serenity_Mixx will receive MIDI control input from two optical rotary encoders wired directly to the Raspberry Pi GPIO — acting as jog wheels for Deck A and Deck B.
+Serenity_Mixx receives MIDI control input from two optical rotary encoders wired directly to the Raspberry Pi GPIO — acting as jog wheels for Deck A and Deck B.
 
 | Component | Detail |
 |---|---|
 | Encoder type | Optical quadrature, 128 PPR |
-| Interface | Direct RPi 5 GPIO (no ADC required) |
-| Signal processing | libgpiod → EncoderReader.cpp → MidiSender.cpp |
-| MIDI transport | ALSA virtual MIDI port |
-| Mixxx mapping | `res/serenity.midi.xml` |
+| Interface | Direct RPi 5 GPIO (no ADC required), via `/dev/gpiochip0` |
+| Signal processing | libgpiod v2 → `src/hardware/serenitygpioencoder.cpp` → `src/hardware/serenitygpiojogwheelservice.cpp` → `src/hardware/serenitymidibridge.cpp` |
+| MIDI transport | ALSA virtual MIDI port ("Serenity Jog Wheels"), opened in-process at startup |
+| Mixxx mapping | `res/controllers/Serenity Jog Wheels.midi.xml` |
+| Build option | `SERENITY_GPIO_JOGWHEELS` (CMake, defaults ON on Linux when libgpiod >= 2.0 and ALSA dev headers are found) |
 
-| Encoder | GPIO Pins | MIDI CC | Mixxx Function |
+| Encoder | GPIO Pins (line offsets) | MIDI CC | Mixxx Function |
 |---|---|---|---|
 | Deck A | GPIO 17, 27 | CC 1 Ch. 1 | Jog wheel — Deck A |
 | Deck B | GPIO 22, 23 | CC 2 Ch. 1 | Jog wheel — Deck B |
+
+`SerenityGpioJogWheelService` is started in `main.cpp` before `ControllerManager::setUpDevices()`, so the virtual MIDI port already exists by the time Mixxx enumerates MIDI devices. In Mixxx's Controller preferences, select "Serenity Jog Wheels" and load the `Serenity Jog Wheels` mapping to activate the encoders as Deck A/B jog wheels. Each encoder detent is sent as a single MIDI CC message using the `<diff/>` (7-bit two's complement) convention: value `1` = +1 tick, value `127` = -1 tick.
+
+On non-Linux platforms, or Linux builds without libgpiod >= 2.0 / ALSA dev headers, `SERENITY_GPIO_JOGWHEELS` is off and this code is not compiled in.
 
 ---
 
