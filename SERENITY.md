@@ -123,7 +123,7 @@ Serenity_Mixx receives MIDI control input from two optical rotary encoders wired
 | Component | Detail |
 |---|---|
 | Encoder type | Optical quadrature, 128 PPR |
-| Interface | Direct RPi 5 GPIO (no ADC required), via `/dev/gpiochip0` |
+| Interface | Direct RPi 5 GPIO (no ADC required), chip auto-detected by driver label (see below) |
 | Signal processing | libgpiod v1 (bulk edge-events API) → `src/hardware/serenitygpioencoder.cpp` → `src/hardware/serenitygpiojogwheelservice.cpp` → `src/hardware/serenitymidibridge.cpp` |
 | MIDI transport | ALSA virtual MIDI port ("Serenity Jog Wheels"), opened in-process at startup |
 | Mixxx mapping | `res/controllers/Serenity Jog Wheels.midi.xml` |
@@ -138,9 +138,17 @@ Serenity_Mixx receives MIDI control input from two optical rotary encoders wired
 
 On non-Linux platforms, or Linux builds without libgpiod >= 1.5 / ALSA dev headers, `SERENITY_GPIO_JOGWHEELS` is off and this code is not compiled in.
 
+### GPIO Chip Number Is Not Stable — Discovered by Label
+
+The RP1 southbridge chip that exposes the Pi 5's 40-pin header does **not** reliably enumerate as `/dev/gpiochip0` — its chip number depends on probe order relative to other `gpiochip`s registered in the system (PMIC, USB peripherals, etc.), and has been observed as `gpiochip4` in practice. Hardcoding a chip number is fragile, since it can shift across kernel/firmware updates or when other hardware is added.
+
+Instead, `SerenityGpioJogWheelService::start()` scans all present GPIO chips at startup for the one whose driver label is `pinctrl-rp1` and uses that chip's actual device path. If no chip with that label is found (e.g. running on non-Pi5 hardware), it logs a warning and falls back to `/dev/gpiochip0`. Check the Mixxx log for the line `SerenityGpioJogWheelService: using GPIO chip ...` to confirm which device it actually picked.
+
+You can check the label of any `gpiochipN` yourself with `gpioinfo` (from the `gpiod` package) — the first line of output for each chip shows its label, e.g. `gpiochip4 [pinctrl-rp1] (54 lines)`.
+
 ### One-Time GPIO Permission Setup (Raspberry Pi)
 
-By default `/dev/gpiochip0` is root-only, so `mixxx` running as a normal user will silently fail to open it. Since the documented workflow runs `./build/mixxx` directly (no `cmake --install`), the udev rule must be installed manually once per Pi:
+By default `/dev/gpiochip*` devices are root-only, so `mixxx` running as a normal user will silently fail to open them. Since the documented workflow runs `./build/mixxx` directly (no `cmake --install`), the udev rule must be installed manually once per Pi:
 
 ```bash
 sudo cp res/linux/mixxx-gpio-uaccess.rules /etc/udev/rules.d/69-mixxx-gpio-uaccess.rules
@@ -159,9 +167,13 @@ Work bottom-up so a failure at one layer doesn't get misdiagnosed as a failure a
    ```
    followed by a found version, not "No package 'libgpiod' found". Then confirm the option is on: `cmake -B build -L | grep SERENITY_GPIO_JOGWHEELS` should show `SERENITY_GPIO_JOGWHEELS:BOOL=ON`. If it's OFF, the jog wheel code isn't compiled in at all — everything past this step is moot until it's fixed.
 
-2. **Test the GPIO wiring independently of Mixxx**, using `gpiod-tools` (the `gpiod` apt package; already installed on the Serenity Pi image). Note this ships the **v1** `gpiomon` CLI, which takes the chip and line offsets as positional arguments (not `--chip`/`--edges`) and watches both edges by default:
+2. **Find the RP1 chip name, then test the GPIO wiring independently of Mixxx.** The chip exposing the 40-pin header is not always `gpiochip0` (see "GPIO Chip Number Is Not Stable" above) — find it first:
    ```bash
-   gpiomon gpiochip0 17 27 22 23
+   gpioinfo | grep -B0 pinctrl-rp1
+   ```
+   This prints a line like `gpiochip4 [pinctrl-rp1] (54 lines)` — use that chip name below. Then, using `gpiod-tools` (the `gpiod` apt package; already installed on the Serenity Pi image; note this ships the **v1** `gpiomon` CLI, which takes the chip and line offsets as positional arguments, not `--chip`/`--edges`, and watches both edges by default):
+   ```bash
+   gpiomon gpiochip4 17 27 22 23
    ```
    Turn each jog wheel by hand; you should see rising/falling edge events printed for the corresponding pins. If nothing prints, it's a wiring/pinout/permissions problem, not a Mixxx problem — fix it here before going further.
 
