@@ -7,6 +7,8 @@
 #include <ctime>
 #include <utility>
 
+#include "moc_serenitygpioencoder.cpp"
+
 namespace {
 
 // Standard 2-bit gray-code quadrature decode table, indexed by
