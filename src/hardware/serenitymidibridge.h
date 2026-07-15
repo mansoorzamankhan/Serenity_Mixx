@@ -3,7 +3,10 @@
 #include <QMutex>
 #include <QString>
 
-struct snd_seq_t;
+// Matches ALSA's own forward declaration in <alsa/seq.h> exactly
+// (snd_seq_t is a typedef, not a struct tag, so "struct snd_seq_t;" here
+// would declare a different, conflicting type).
+typedef struct _snd_seq snd_seq_t;
 
 /// Owns a single ALSA sequencer client with one virtual MIDI output port.
 /// Mixxx's own MIDI controller subsystem (via PortMidi) discovers this port
