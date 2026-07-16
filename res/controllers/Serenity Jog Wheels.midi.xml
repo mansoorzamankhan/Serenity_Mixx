@@ -6,23 +6,26 @@
     <description>Maps the Serenity hardware's two RPi GPIO optical rotary encoders (read via libgpiod and republished as MIDI CC over an ALSA virtual port by SerenityGpioJogWheelService) to the Deck A and Deck B jog wheels. See SERENITY.md for the GPIO pinout.</description>
   </info>
   <controller id="Serenity Jog Wheels">
+    <scriptfiles>
+      <file functionprefix="SerenityJogWheels" filename="Serenity-Jog-Wheels-scripts.js"/>
+    </scriptfiles>
     <controls>
       <control>
         <group>[Channel1]</group>
-        <key>jog</key>
+        <key>SerenityJogWheels.deckJog</key>
         <status>0xB0</status>
         <midino>0x01</midino>
         <options>
-          <diff/>
+          <script-binding/>
         </options>
       </control>
       <control>
         <group>[Channel2]</group>
-        <key>jog</key>
+        <key>SerenityJogWheels.deckJog</key>
         <status>0xB0</status>
         <midino>0x02</midino>
         <options>
-          <diff/>
+          <script-binding/>
         </options>
       </control>
     </controls>
