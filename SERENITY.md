@@ -123,7 +123,7 @@ Serenity_Mixx receives MIDI control input from two optical rotary encoders wired
 | Component | Detail |
 |---|---|
 | Encoder type | Optical quadrature, 128 PPR |
-| Interface | Direct RPi 5 GPIO (no ADC required), chip auto-detected by driver label (see below) |
+| Interface | Direct RPi 5 GPIO (no ADC required), via `/dev/gpiochip4` (see below) |
 | Signal processing | libgpiod v1 (bulk edge-events API) → `src/hardware/serenitygpioencoder.cpp` → `src/hardware/serenitygpiojogwheelservice.cpp` → `src/hardware/serenitymidibridge.cpp` |
 | MIDI transport | ALSA virtual MIDI port ("Serenity Jog Wheels"), opened in-process at startup |
 | Mixxx mapping | `res/controllers/Serenity Jog Wheels.midi.xml` |
@@ -134,17 +134,21 @@ Serenity_Mixx receives MIDI control input from two optical rotary encoders wired
 | Deck A | GPIO 17, 27 | CC 1 Ch. 1 | Jog wheel — Deck A |
 | Deck B | GPIO 22, 23 | CC 2 Ch. 1 | Jog wheel — Deck B |
 
-`SerenityGpioJogWheelService` is started in `main.cpp` before `ControllerManager::setUpDevices()`, so the virtual MIDI port already exists by the time Mixxx enumerates MIDI devices. In Mixxx's Controller preferences, select "Serenity Jog Wheels" and load the `Serenity Jog Wheels` mapping to activate the encoders as Deck A/B jog wheels. Each encoder detent is sent as a single MIDI CC message using the `<diff/>` (7-bit two's complement) convention: value `1` = +1 tick, value `127` = -1 tick.
+`SerenityGpioJogWheelService` is started in `main.cpp` as the very first thing `runMixxx()` does — **before `CoreServices` is even constructed**, not merely before `ControllerManager::setUpDevices()`. This ordering matters: `ControllerManager` (created inside `CoreServices::initialize()`) hands off to its own worker thread, which constructs `PortMidiEnumerator`. That constructor calls `Pm_Initialize()`, which takes a **one-time snapshot** of the ALSA sequencer client list — later calls to `Pm_CountDevices()`/`Pm_GetDeviceInfo()` (in `setUpDevices()`) just read from that cached snapshot, they don't rescan. That worker thread can (and in practice does) finish its snapshot while the main thread is still busy loading the skin/UI, i.e. well before a service started "before `setUpDevices()`" would have created its port. So our ALSA virtual MIDI port must exist before *anything* in `CoreServices` runs, not just before the explicit device-enumeration call.
+
+In Mixxx's Controller preferences, select "Serenity Jog Wheels" and load the `Serenity Jog Wheels` mapping to activate the encoders as Deck A/B jog wheels. Each encoder detent is sent as a single MIDI CC message using the `<diff/>` (7-bit two's complement) convention: value `1` = +1 tick, value `127` = -1 tick.
 
 On non-Linux platforms, or Linux builds without libgpiod >= 1.5 / ALSA dev headers, `SERENITY_GPIO_JOGWHEELS` is off and this code is not compiled in.
 
-### GPIO Chip Number Is Not Stable — Discovered by Label
+### GPIO Chip Number Is Not Stable
 
-The RP1 southbridge chip that exposes the Pi 5's 40-pin header does **not** reliably enumerate as `/dev/gpiochip0` — its chip number depends on probe order relative to other `gpiochip`s registered in the system (PMIC, USB peripherals, etc.), and has been observed as `gpiochip4` in practice. Hardcoding a chip number is fragile, since it can shift across kernel/firmware updates or when other hardware is added.
+The RP1 southbridge chip that exposes the Pi 5's 40-pin header does **not** reliably enumerate as `/dev/gpiochip0` — its chip number depends on probe order relative to other `gpiochip`s registered in the system (PMIC, USB peripherals, etc.). On the current hardware it's confirmed to be `/dev/gpiochip4`, and `kGpioChipPath` in `serenitygpiojogwheelservice.cpp` is hardcoded to that. If this ever needs to move to different hardware, re-check with:
 
-Instead, `SerenityGpioJogWheelService::start()` scans all present GPIO chips at startup for the one whose driver label is `pinctrl-rp1` and uses that chip's actual device path. If no chip with that label is found (e.g. running on non-Pi5 hardware), it logs a warning and falls back to `/dev/gpiochip0`. Check the Mixxx log for the line `SerenityGpioJogWheelService: using GPIO chip ...` to confirm which device it actually picked.
+```bash
+gpioinfo | grep pinctrl-rp1
+```
 
-You can check the label of any `gpiochipN` yourself with `gpioinfo` (from the `gpiod` package) — the first line of output for each chip shows its label, e.g. `gpiochip4 [pinctrl-rp1] (54 lines)`.
+which prints a line like `gpiochip4 [pinctrl-rp1] (54 lines)` — update `kGpioChipPath` (and rebuild) if the number differs.
 
 ### One-Time GPIO Permission Setup (Raspberry Pi)
 

@@ -75,6 +75,21 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
     } else
 #endif
     {
+#ifdef __SERENITY_GPIO_JOGWHEELS__
+        // Start reading the RPi GPIO jog wheel encoders and publishing them
+        // as MIDI over the ALSA virtual port before CoreServices is even
+        // constructed. ControllerManager (created inside
+        // CoreServices::initialize() below) hands off to a worker thread
+        // that constructs PortMidiEnumerator, whose Pm_Initialize() call
+        // takes a ONE-TIME snapshot of the ALSA sequencer client list --
+        // that worker thread can and does race ahead of the rest of
+        // startup, so our virtual MIDI port must exist before anything
+        // else here runs, not merely before setUpDevices() is called.
+        // See SERENITY.md "Hardware Integration".
+        SerenityGpioJogWheelService serenityGpioJogWheelService;
+        serenityGpioJogWheelService.start();
+#endif
+
         auto pCoreServices = std::make_shared<mixxx::CoreServices>(args, pApp);
 
         // This scope ensures that `MixxxMainWindow` is destroyed *before*
@@ -112,15 +127,6 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
         mainWindow.initializeQOpenGL();
 #else
         mainWindow.initialize();
-#endif
-
-#ifdef __SERENITY_GPIO_JOGWHEELS__
-        // Start reading the RPi GPIO jog wheel encoders and publishing them
-        // as MIDI over the ALSA virtual port before the ControllerManager
-        // enumerates MIDI devices below, so it picks up our virtual port on
-        // this first scan. See SERENITY.md "Planned Hardware Integration".
-        SerenityGpioJogWheelService serenityGpioJogWheelService;
-        serenityGpioJogWheelService.start();
 #endif
 
         pCoreServices->getControllerManager()->setUpDevices();
