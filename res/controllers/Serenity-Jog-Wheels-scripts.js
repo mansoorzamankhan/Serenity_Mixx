@@ -1,5 +1,9 @@
 var SerenityJogWheels = {};
 
+// Scales the raw per-tick delta before it's applied. 1.0 = raw encoder
+// resolution (128 PPR), which felt too sensitive on the physical hardware.
+SerenityJogWheels.sensitivity = 0.6;
+
 // [ChannelN],jog is a plain accumulator ControlObject (not a
 // ControlTTRotary), so it has no MIDI behavior attached and can't be driven
 // via the declarative <diff/> XML option -- see src/engine/controls/
@@ -13,5 +17,7 @@ var SerenityJogWheels = {};
 // ticks.
 SerenityJogWheels.deckJog = function(channel, control, value, status, group) {
     var delta = value < 64 ? value : value - 128;
-    engine.setValue(group, "jog", engine.getValue(group, "jog") + delta);
+    engine.setValue(group,
+            "jog",
+            engine.getValue(group, "jog") + delta * SerenityJogWheels.sensitivity);
 };
