@@ -603,28 +603,27 @@ void MixxxMainWindow::attachSerenityCloseButton() {
     // Remove previous button if skin was reloaded
     delete m_pSerenityCloseBtn;
 
-    m_pSerenityCloseBtn = new QPushButton(QStringLiteral("X"), cw);
-    // 96x24 — double width, half height of original 48x48
-    static constexpr int kBtnW      = 96;
-    static constexpr int kBtnH      = 24;
-    static constexpr int kRightGap  = 2; // shifted 48px right
+    m_pSerenityCloseBtn = new QPushButton(QStringLiteral("←"), cw);
+    static constexpr int kBtnW     = 64;
+    static constexpr int kBtnH     = 30;
+    static constexpr int kLeftGap  = 0;
+    static constexpr int kTopGap   = 0;
     m_pSerenityCloseBtn->setFixedSize(kBtnW, kBtnH);
     m_pSerenityCloseBtn->setStyleSheet(
             QStringLiteral("QPushButton {"
-                           "  background-color: #CC0000;"
+                           "  background-color: #0B0F14;"
                            "  color: #FFFFFF;"
                            "  font-weight: bold;"
                            "  font-size: 20px;"
                            "  border: none;"
                            "  border-radius: 0px;"
                            "}"
-                           "QPushButton:hover { background-color: #FF2200; }"
-                           "QPushButton:pressed { background-color: #880000; }"));
+                           "QPushButton:hover { background-color: #202833; }"
+                           "QPushButton:pressed { background-color: #05070A; }"));
     m_pSerenityCloseBtn->setCursor(Qt::PointingHandCursor);
-    connect(m_pSerenityCloseBtn, &QPushButton::clicked, this, &MixxxMainWindow::close);
+    connect(m_pSerenityCloseBtn, &QPushButton::clicked, this, &MixxxMainWindow::showMinimized);
 
-    // Positioned just left of the settings gear, flush to the top
-    m_pSerenityCloseBtn->move(cw->width() - kBtnW - kRightGap, 0);
+    m_pSerenityCloseBtn->move(kLeftGap, kTopGap);
     m_pSerenityCloseBtn->raise();
     m_pSerenityCloseBtn->show();
 
@@ -1475,13 +1474,12 @@ void MixxxMainWindow::tryParseAndSetDefaultStyleSheet() {
 
 /// Catch ToolTip and WindowStateChange events
 bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
-    // Keep the Serenity close button pinned to the top-right of the skin widget
+    // Keep the Serenity back button pinned to the top-left of the skin widget
     if (m_pSerenityCloseBtn && obj == centralWidget() &&
             event->type() == QEvent::Resize) {
-        QWidget* cw = centralWidget();
-        static constexpr int kBtnW     = 85;
-        static constexpr int kRightGap = 0;
-        m_pSerenityCloseBtn->move(cw->width() - kBtnW - kRightGap, 0);
+        static constexpr int kLeftGap = 0;
+        static constexpr int kTopGap = 0;
+        m_pSerenityCloseBtn->move(kLeftGap, kTopGap);
         m_pSerenityCloseBtn->raise();
     }
 
